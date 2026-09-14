@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#2459e0" />
+    <meta name="robots" content="noindex,nofollow" />
+    <meta
+      name="description"
+      content="按实际日期查看每天的课程、上课时间与教室。"
+    />
+    <title>每日课表</title>
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%232459e0'/%3E%3Cpath d='M8 10h16v15H8zM11 7v6m10-6v6M8 16h16' stroke='white' stroke-width='2' fill='none'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="style.css" />
+    <script type="module" src="app.js"></script>
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <a class="brand" href="./"
+          ><span class="brand-icon" aria-hidden="true">▦</span>每日课表</a
+        ><span class="school">上海创智学院</span
+        ><button id="lock" class="quiet" hidden>锁定</button>
+      </header>
+      <main>
+        <section id="gate" class="gate" aria-labelledby="gate-title">
+          <span class="eyebrow">MY SCHEDULE</span>
+          <h1 id="gate-title">今天，从容安排。</h1>
+          <p id="gate-description">正在读取课表…</p>
+          <form id="unlock-form" hidden>
+            <label for="password">查看口令</label>
+            <div class="unlock-row">
+              <input
+                id="password"
+                type="password"
+                autocomplete="current-password"
+                required
+                placeholder="输入课表口令"
+              /><button class="primary" type="submit">打开课表</button>
+            </div>
+          </form>
+          <p id="error" class="error" role="alert"></p>
+        </section>
+        <div id="workspace" hidden>
+          <section class="date-heading">
+            <div>
+              <span class="eyebrow" id="term">MY SCHEDULE</span>
+              <h1>
+                <span id="heading-date"></span
+                ><span id="heading-weekday"></span>
+              </h1>
+              <p id="day-summary"></p>
+            </div>
+            <div class="date-actions">
+              <button id="today" class="quiet">回到今天</button
+              ><label class="date-picker"
+                ><span>选择日期</span
+                ><input id="date" type="date" aria-label="选择日期"
+              /></label>
+            </div>
+          </section>
+          <nav class="week-navigation" aria-label="按周选择日期">
+            <button id="previous-week" class="week-arrow" aria-label="上一周">
+              ‹
+            </button>
+            <div id="week" class="week"></div>
+            <button id="next-week" class="week-arrow" aria-label="下一周">
+              ›
+            </button>
+          </nav>
+          <div class="content-grid">
+            <section class="agenda" aria-labelledby="agenda-title">
+              <div class="section-heading">
+                <h2 id="agenda-title">当日安排</h2>
+                <span id="day-count" class="count"></span>
+              </div>
+              <div id="sessions" aria-live="polite"></div>
+            </section>
+            <aside>
+              <section class="next-panel">
+                <span class="eyebrow">UP NEXT</span>
+                <h2>下一次上课</h2>
+                <div id="next-session"></div>
+              </section>
+              <section class="week-panel">
+                <h2>这一周</h2>
+                <div id="week-summary"></div>
+              </section>
+            </aside>
+          </div>
+          <footer>
+            <span id="updated"></span>
+            <p id="coverage"></p>
+            <p>
+              按教务系统的具体日期整理，非实时同步。临时调整请以<a
+                href="https://xspy.sii.edu.cn/educationalStudent/courseManage/courseInformation"
+                target="_blank"
+                rel="noopener noreferrer"
+                >教务系统</a
+              >和课程通知为准。
+            </p>
+          </footer>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>
