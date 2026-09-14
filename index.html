@@ -42,6 +42,10 @@
                 placeholder="输入课表口令"
               /><button class="primary" type="submit">打开课表</button>
             </div>
+            <label class="remember-device" for="remember-device">
+              <input id="remember-device" type="checkbox" checked />
+              <span>记住此设备，30 天内免输口令</span>
+            </label>
           </form>
           <p id="error" class="error" role="alert"></p>
         </section>
@@ -93,6 +97,7 @@
             </aside>
           </div>
           <footer>
+            <p id="session-message" role="status" hidden></p>
             <span id="updated"></span>
             <p id="coverage"></p>
             <p>

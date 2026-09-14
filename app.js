@@ -9,6 +9,13 @@ import {
   validate,
   isDate,
 } from "./schedule.js";
+import {
+  loadSession,
+  saveSession,
+  clearSession,
+  importPassword,
+  decryptSchedule,
+} from "./session.js";
 const $ = (id) => document.getElementById(id);
 const weekdays = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
 const colors = ["#2459e0", "#8860d0", "#15958d", "#d4872e", "#d35f83"];
@@ -17,6 +24,17 @@ let data,
   lastToday = selected,
   envelope,
   encrypted = false;
+let sessionExpiresAt = 0;
+let authGeneration = 0;
+let sessionChannel;
+try {
+  sessionChannel = new BroadcastChannel("sii-timetable-session-v1");
+  sessionChannel.onmessage = ({ data: message }) => {
+    if (message === "locked") hideSchedule();
+  };
+} catch {
+  /* Browsers without BroadcastChannel still support device sessions. */
+}
 const h = (tag, cls, text) => {
   const e = document.createElement(tag);
   if (cls) e.className = cls;
@@ -217,51 +235,52 @@ function show(schedule) {
   $("lock").hidden = !encrypted;
   render();
 }
-function base64(s) {
-  return Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
-}
-async function decrypt(password) {
-  const material = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(password),
-    "PBKDF2",
-    false,
-    ["deriveKey"],
-  );
-  const key = await crypto.subtle.deriveKey(
-    {
-      name: "PBKDF2",
-      salt: base64(envelope.salt),
-      iterations: envelope.iterations,
-      hash: "SHA-256",
-    },
-    material,
-    { name: "AES-GCM", length: 256 },
-    false,
-    ["decrypt"],
-  );
-  const plain = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv: base64(envelope.iv) },
-    key,
-    base64(envelope.ciphertext),
-  );
-  return JSON.parse(new TextDecoder().decode(plain));
+function sessionMessage(text) {
+  $("session-message").textContent = text;
+  $("session-message").hidden = !text;
 }
 $("unlock-form").onsubmit = async (e) => {
   e.preventDefault();
   const button = e.submitter;
   button.disabled = true;
   $("error").textContent = "";
+  const generation = ++authGeneration;
   try {
-    show(await decrypt($("password").value));
+    const material = await importPassword($("password").value);
+    const schedule = validate(await decryptSchedule(envelope, material));
+    if (generation !== authGeneration) return;
     $("password").value = "";
+    sessionExpiresAt = 0;
+    try {
+      if ($("remember-device").checked) {
+        const session = await saveSession(material);
+        sessionExpiresAt = session.expiresAt;
+        sessionMessage(
+          "此设备已记住解锁状态，30 天内免输口令。点击“锁定”可清除。",
+        );
+      } else {
+        await clearSession();
+        sessionMessage("仅本次打开有效，关闭或刷新后需要重新输入口令。");
+      }
+    } catch {
+      sessionMessage(
+        "浏览器无法保存解锁状态，本次可以查看，下次打开仍需输入口令。",
+      );
+    }
+    if (generation !== authGeneration) {
+      await clearSession().catch(() => {});
+      return;
+    }
+    show(schedule);
   } catch {
     $("error").textContent = "口令不正确，或课表文件已损坏，请重试。";
   } finally {
     button.disabled = false;
   }
 };
-$("lock").onclick = () => {
+function hideSchedule() {
+  ++authGeneration;
+  sessionExpiresAt = 0;
   data = undefined;
   $("workspace").hidden = true;
   $("gate").hidden = false;
@@ -269,13 +288,31 @@ $("lock").onclick = () => {
   $("sessions").replaceChildren();
   $("next-session").replaceChildren();
   $("week-summary").replaceChildren();
+  $("password").value = "";
+  $("error").textContent = "";
+  $("gate-description").textContent = "输入口令，查看你的实际课程安排。";
+  $("unlock-form").hidden = false;
   $("password").focus();
+}
+$("lock").onclick = async () => {
+  hideSchedule();
+  sessionChannel?.postMessage("locked");
+  try {
+    await clearSession();
+  } catch {
+    $("error").textContent =
+      "无法清除此设备的记住状态，请在浏览器设置中清除此网站的数据。";
+  }
 };
 $("date").onchange = (e) => select(e.target.value);
 $("today").onclick = () => select(chinaDate());
 $("previous-week").onclick = () => select(addDays(selected, -7));
 $("next-week").onclick = () => select(addDays(selected, 7));
 function refresh() {
+  if (sessionExpiresAt && Date.now() >= sessionExpiresAt) {
+    $("lock").onclick();
+    return;
+  }
   const today = chinaDate();
   if (selected === lastToday) selected = today;
   lastToday = today;
@@ -291,8 +328,26 @@ try {
   envelope = await response.json();
   if (envelope.encrypted) {
     encrypted = true;
-    $("gate-description").textContent = "输入口令，查看你的实际课程安排。";
-    $("unlock-form").hidden = false;
+    const generation = authGeneration;
+    try {
+      const session = await loadSession();
+      if (session) {
+        const schedule = validate(
+          await decryptSchedule(envelope, session.material),
+        );
+        if (generation === authGeneration) {
+          sessionExpiresAt = session.expiresAt;
+          sessionMessage("已自动解锁。点击“锁定”可清除此设备的记住状态。");
+          show(schedule);
+        }
+      }
+    } catch {
+      await clearSession().catch(() => {});
+    }
+    if (!data) {
+      $("gate-description").textContent = "输入口令，查看你的实际课程安排。";
+      $("unlock-form").hidden = false;
+    }
   } else show(envelope);
 } catch (e) {
   $("gate-description").textContent = "暂时无法读取课表。";

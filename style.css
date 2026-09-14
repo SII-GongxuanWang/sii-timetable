@@ -697,3 +697,19 @@ footer a {
     }
   }
 }
+.gate .remember-device {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 18px 0 0;
+  font-size: 14px;
+  color: var(--muted);
+  cursor: pointer;
+}
+.remember-device input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  flex-shrink: 0;
+  accent-color: var(--blue);
+}
